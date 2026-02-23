@@ -1,0 +1,22 @@
+{
+  "name": "visual-programming",
+  "version": "1.0.0",
+  "description": "To make it easy for you to get started with GitLab, here's a list of recommended next steps.",
+  "main": "index.js",
+  "scripts": {
+  "test": "vitest run",
+  "test:watch": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.csc.sibsutis.ru/ip414s16/visual-programming"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
