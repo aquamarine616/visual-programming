@@ -95,3 +95,58 @@ export interface HasId {
 export function findById<T extends HasId>(items: T[], id: number): T | undefined {
   return items.find((item) => item.id === id);
 }
+
+// ===== LAB3 =====
+
+type CsvRow = Record<string, string | number>;
+
+function coerceCsvValue(value: string): string | number {
+  const v = value.trim();
+  if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+  return v;
+}
+
+export function csvToJSON(input: string[], delimiter: string): object[] {
+  if (!delimiter) throw new Error("Delimiter must be non-empty");
+  if (!input || input.length === 0) throw new Error("Input must contain at least a header row");
+
+  const [headerLine, ...dataLines] = input;
+  if (!headerLine?.trim()) throw new Error("Header row is empty");
+
+  const headers = headerLine.split(delimiter).map((h) => h.trim());
+  if (headers.some((h) => !h)) throw new Error("Header contains empty column name");
+
+  const unique = new Set(headers);
+  if (unique.size !== headers.length) throw new Error("Header contains duplicate column names");
+
+  return dataLines
+    .filter((line) => line.trim().length > 0)
+    .map((line, idx) => {
+      const values = line.split(delimiter);
+      if (values.length !== headers.length) {
+        throw new Error(`Row ${idx + 1} has ${values.length} columns, expected ${headers.length}`);
+      }
+
+      const row: CsvRow = {};
+      headers.forEach((h, i) => {
+        row[h] = coerceCsvValue(values[i] ?? "");
+      });
+      return row;
+    });
+}
+
+export async function formatCSVFileToJSONFile(
+  input: string,
+  output: string,
+  delimiter: string
+): Promise<void> {
+  const { readFile, writeFile } = await import("node:fs/promises");
+
+  const csvText = await readFile(input, "utf-8");
+  const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+
+  const data = csvToJSON(lines, delimiter);
+  const jsonText = JSON.stringify(data, null, 2);
+
+  await writeFile(output, jsonText, "utf-8");
+}
