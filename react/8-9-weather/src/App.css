@@ -1,0 +1,146 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.app {
+  min-height: 100vh;
+  padding: 30px;
+  color: white;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.default {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.clear {
+  background: linear-gradient(135deg, #f6d365, #fda085);
+}
+
+.clouds {
+  background: linear-gradient(135deg, #757f9a, #d7dde8);
+}
+
+.rain,
+.drizzle {
+  background: linear-gradient(135deg, #314755, #26a0da);
+}
+
+.snow {
+  background: linear-gradient(135deg, #e6dada, #274046);
+}
+
+.thunderstorm {
+  background: linear-gradient(135deg, #232526, #414345);
+}
+
+.mist,
+.fog,
+.haze {
+  background: linear-gradient(135deg, #606c88, #3f4c6b);
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+h1 {
+  margin-top: 0;
+  font-size: 42px;
+}
+
+.search {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.search input {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+.search button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.card {
+  margin-bottom: 20px;
+  padding: 20px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.weather {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.weather img {
+  width: 130px;
+  height: 130px;
+}
+
+.temperature {
+  margin: 10px 0;
+  font-size: 60px;
+  font-weight: bold;
+}
+
+.description {
+  font-size: 22px;
+  text-transform: capitalize;
+}
+
+.forecast {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 15px;
+}
+
+.forecast-card {
+  text-align: center;
+}
+
+.forecast-card img {
+  width: 70px;
+  height: 70px;
+}
+
+.error {
+  padding: 15px;
+  border-radius: 10px;
+  background: rgba(255, 0, 0, 0.35);
+}
+
+.message {
+  padding: 15px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 600px) {
+  .weather {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .search {
+    flex-direction: column;
+  }
+}

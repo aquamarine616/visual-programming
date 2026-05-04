@@ -4,6 +4,42 @@ import cors from 'cors';
 const app = express();
 app.use(cors());
 
+app.get('/', (req, res) => {
+  res.send('Server is working');
+});
+
+async function findCoverUrl(title, author) {
+  const queries = [
+    author ? `${title} ${author}` : title,
+    title,
+  ];
+
+  for (const q of queries) {
+    const searchUrl = `https://openlibrary.org/search.json?title=${encodeURIComponent(title)}${
+      author ? `&author=${encodeURIComponent(author)}` : ''
+    }`;
+
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+
+    const doc = searchData.docs?.find(
+      (item) => item.cover_i || (item.isbn && item.isbn.length > 0)
+    );
+
+    if (!doc) continue;
+
+    if (doc.isbn && doc.isbn.length > 0) {
+      return `https://covers.openlibrary.org/b/isbn/${doc.isbn[0]}-L.jpg`;
+    }
+
+    if (doc.cover_i) {
+      return `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
+    }
+  }
+
+  return null;
+}
+
 app.get('/api/cover', async (req, res) => {
   try {
     const { title, author } = req.query;
@@ -12,26 +48,14 @@ app.get('/api/cover', async (req, res) => {
       return res.status(400).send('title is required');
     }
 
-    const query = author
-      ? `intitle:${title}+inauthor:${author}`
-      : `intitle:${title}`;
+    const coverUrl = await findCoverUrl(title, author);
 
-    const googleRes = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}`
-    );
-    const googleData = await googleRes.json();
-
-    const itemWithImage = googleData.items?.find(
-      (item) => item.volumeInfo?.imageLinks?.thumbnail
-    );
-
-    const thumbnail = itemWithImage?.volumeInfo?.imageLinks?.thumbnail;
-
-    if (!thumbnail) {
+    if (!coverUrl) {
       return res.status(404).send('No image');
     }
 
-    const imageRes = await fetch(thumbnail.replace('http://', 'https://'));
+    const imageRes = await fetch(coverUrl);
+
     if (!imageRes.ok) {
       return res.status(404).send('Image not found');
     }
