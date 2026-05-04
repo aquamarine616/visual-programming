@@ -52,30 +52,76 @@ body {
 
 h1 {
   margin-top: 0;
+  margin-bottom: 25px;
   font-size: 42px;
+}
+
+h2 {
+  margin-top: 0;
 }
 
 .search {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+  max-width: 700px;
+  width: 100%;
+}
+
+.search-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 0;
 }
 
 .search input {
-  flex: 1;
-  padding: 12px;
+  width: 100%;
+  padding: 14px 16px;
   border: none;
   border-radius: 10px;
   font-size: 16px;
+  outline: none;
 }
 
 .search button {
-  padding: 12px 20px;
+  padding: 14px 24px;
   border: none;
   border-radius: 10px;
-  cursor: pointer;
   font-size: 16px;
   font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  background: white;
+  color: #111;
+}
+
+.search button:hover {
+  background: #eeeeee;
+}
+
+.cities-list {
+  position: absolute;
+  top: 52px;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+  border-radius: 10px;
+  background: white;
+  color: #222;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.cities-list li {
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cities-list li:hover {
+  background: #eeeeee;
 }
 
 .card {
@@ -89,6 +135,7 @@ h1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 20px;
 }
 
 .weather img {
@@ -107,6 +154,10 @@ h1 {
   text-transform: capitalize;
 }
 
+.air {
+  margin-top: 20px;
+}
+
 .forecast {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -122,10 +173,8 @@ h1 {
   height: 70px;
 }
 
-.error {
-  padding: 15px;
-  border-radius: 10px;
-  background: rgba(255, 0, 0, 0.35);
+.forecast-card p {
+  text-transform: capitalize;
 }
 
 .message {
@@ -134,13 +183,35 @@ h1 {
   background: rgba(255, 255, 255, 0.2);
 }
 
+.error {
+  padding: 15px;
+  border-radius: 10px;
+  background: rgba(255, 0, 0, 0.35);
+}
+
 @media (max-width: 600px) {
+  .app {
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 34px;
+  }
+
+  .search {
+    flex-direction: column;
+  }
+
+  .search button {
+    width: 100%;
+  }
+
   .weather {
     flex-direction: column;
     text-align: center;
   }
 
-  .search {
-    flex-direction: column;
+  .temperature {
+    font-size: 50px;
   }
 }

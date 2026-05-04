@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
   getAirPollution,
-  getCityCoordinates,
-  getWeatherForecast
+  getCoords,
+  getForecast,
+  getPlaceByCoords
 } from './api.js';
 
 import Search from './components/Search.jsx';
@@ -11,35 +12,82 @@ import Forecast from './components/Forecast.jsx';
 import Air from './components/Air.jsx';
 
 function App() {
-  const [city, setCity] = useState('Москва');
+  const [city, setCity] = useState('Новосибирск');
   const [location, setLocation] = useState(null);
   const [forecast, setForecast] = useState([]);
   const [air, setAir] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  async function loadWeather(cityName) {
+  function parseCoordinates(value) {
+    const parts = value.split(',').map(part => part.trim());
+
+    if (parts.length !== 2) {
+      return null;
+    }
+
+    const lat = Number(parts[0]);
+    const lon = Number(parts[1]);
+
+    if (
+      Number.isNaN(lat) ||
+      Number.isNaN(lon) ||
+      lat < -90 ||
+      lat > 90 ||
+      lon < -180 ||
+      lon > 180
+    ) {
+      return null;
+    }
+
+    return { lat, lon };
+  }
+
+  async function loadWeather(value) {
     try {
       setLoading(true);
       setError('');
 
-      const coordinates = await getCityCoordinates(cityName);
+      let coordinates;
+      let locationInfo;
 
-      const weatherData = await getWeatherForecast(
-        coordinates.lat,
-        coordinates.lon
-      );
+      const coordsFromInput = parseCoordinates(value);
 
-      const airData = await getAirPollution(
-        coordinates.lat,
-        coordinates.lon
-      );
+      if (coordsFromInput) {
+        coordinates = coordsFromInput;
 
-      setLocation({
-        name: coordinates.local_names?.ru || coordinates.name,
-        country: coordinates.country
-      });
+        const places = await getPlaceByCoords(coordinates.lat, coordinates.lon);
+        const place = places[0];
 
+        if (place) {
+          locationInfo = {
+            name: place.local_names?.ru || place.name,
+            country: place.country
+          };
+        } else {
+          locationInfo = {
+            name: `Координаты: ${coordinates.lat}, ${coordinates.lon}`,
+            country: ''
+          };
+        }
+      } else {
+        const coords = await getCoords(value);
+
+        coordinates = {
+          lat: coords.lat,
+          lon: coords.lon
+        };
+
+        locationInfo = {
+          name: coords.local_names?.ru || coords.name,
+          country: coords.country
+        };
+      }
+
+      const weatherData = await getForecast(coordinates.lat, coordinates.lon);
+      const airData = await getAirPollution(coordinates.lat, coordinates.lon);
+
+      setLocation(locationInfo);
       setForecast(weatherData.list);
       setAir(airData.list[0]);
     } catch (err) {
@@ -55,11 +103,11 @@ function App() {
   useEffect(() => {
     loadWeather(city);
 
-    const intervalId = setInterval(() => {
+    const timer = setInterval(() => {
       loadWeather(city);
     }, 60 * 60 * 1000);
 
-    return () => clearInterval(intervalId);
+    return () => clearInterval(timer);
   }, [city]);
 
   const currentWeather = forecast[0];
