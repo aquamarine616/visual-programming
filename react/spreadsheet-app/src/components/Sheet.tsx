@@ -12,212 +12,216 @@ import {
   startEditing,
   setEditValue,
   stopEditing,
+  moveSelection,
 } from '../store/spreadsheetSlice'
 import { cellKey, colToLetter } from '../utils/cellRef'
 import { getValue } from '../utils/formulas'
+import { applyNumberFormat } from '../utils/numberFormat'
+import { CellFormat } from '../types'
 import ContextMenu from './ContextMenu'
 
-export default function Sheet() {
-  let dispatch = useAppDispatch()
-  let state = useAppSelector(st => st.spreadsheet)
-  let editorRef = useRef<HTMLInputElement>(null)
-  
-  let [scrollTop, setScrollTop] = useState(0)
-  let [menu, setMenu] = useState<any>(null)
+const DEFAULT_COL_WIDTH = 80
+const ROW_HEIGHT = 24
+const HEADER_HEIGHT = 24
+const INDEX_WIDTH = 40
+const VISIBLE_ROWS = 60
+
+type Props = {
+  onCellSelect?: (row: number, col: number, shift: boolean) => void
+}
+
+export default function Sheet({ onCellSelect }: Props) {
+  const dispatch = useAppDispatch()
+  const s = useAppSelector(st => st.spreadsheet)
+  const editorRef = useRef<HTMLInputElement>(null)
+  const [scrollTop, setScrollTop] = useState(0)
+  const [menu, setMenu] = useState<{ x: number; y: number; row?: number; col?: number } | null>(null)
 
   useEffect(() => {
-    if (state.editing) {
-      if (editorRef.current) {
-        editorRef.current.focus()
-        editorRef.current.select()
-      }
+    if (s.editing && editorRef.current) {
+      editorRef.current.focus()
+
+      const v = editorRef.current.value
+      editorRef.current.setSelectionRange(v.length, v.length)
     }
-  }, [state.editing])
+  }, [s.editing])
 
-  function getColW(c: number) {
-    if (state.colWidths[c]) return state.colWidths[c]
-    return 80
-  }
+  function getColW(c: number) { return s.colWidths[c] || DEFAULT_COL_WIDTH }
+  function getRowH(r: number) { return s.rowHeights[r] || ROW_HEIGHT }
 
-  function getRowH(r: number) {
-    if (state.rowHeights[r]) return state.rowHeights[r]
-    return 24
-  }
-
-  let startRow = Math.floor(scrollTop / 24) - 5
-  if (startRow < 0) startRow = 0
-  
-  let endRow = startRow + 60
-  if (endRow > state.rows) endRow = state.rows
-  
-  let topPad = startRow * 24
-  let bottomPad = (state.rows - endRow) * 24
-  if (bottomPad < 0) bottomPad = 0
+  const startRow = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 5)
+  const endRow = Math.min(s.rows, startRow + VISIBLE_ROWS)
+  const topPad = startRow * ROW_HEIGHT
+  const bottomPad = Math.max(0, (s.rows - endRow) * ROW_HEIGHT)
 
   function inSelection(r: number, c: number) {
-    let r1 = state.selRow
-    let r2 = state.selEndRow
-    if (r1 > r2) { r1 = state.selEndRow; r2 = state.selRow }
-    
-    let c1 = state.selCol
-    let c2 = state.selEndCol
-    if (c1 > c2) { c1 = state.selEndCol; c2 = state.selCol }
-    
-    if (r >= r1 && r <= r2 && c >= c1 && c <= c2) return true
-    return false
+    const r1 = Math.min(s.selRow, s.selEndRow)
+    const r2 = Math.max(s.selRow, s.selEndRow)
+    const c1 = Math.min(s.selCol, s.selEndCol)
+    const c2 = Math.max(s.selCol, s.selEndCol)
+    return r >= r1 && r <= r2 && c >= c1 && c <= c2
   }
 
   function commitEdit() {
-    if (state.editing) {
-      dispatch(setCell({ row: state.selRow, col: state.selCol, value: state.editValue }))
+    if (s.editing) {
+      dispatch(setCell({ row: s.selRow, col: s.selCol, value: s.editValue }))
       dispatch(stopEditing())
     }
   }
 
   function handleSelect(row: number, col: number, shift: boolean) {
     commitEdit()
-    dispatch(setSelection({ row: row, col: col, extend: shift }))
+    if (onCellSelect) onCellSelect(row, col, shift)
+    else dispatch(setSelection({ row, col, extend: shift }))
   }
 
   function handleStartEdit() {
-    let val = state.cells[cellKey(state.selRow, state.selCol)]
-    if (!val) val = ''
-    dispatch(startEditing(val))
+    dispatch(startEditing(s.cells[cellKey(s.selRow, s.selCol)] || ''))
   }
 
-  function startColResize(e: any, col: number) {
+  function handleEditorKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === 'Escape' || e.key === 'Tab') {
+      e.preventDefault()
+
+      e.nativeEvent.stopImmediatePropagation()
+    }
+    if (e.key === 'Enter') {
+      commitEdit()
+      dispatch(moveSelection({ dRow: 1, dCol: 0 }))
+    } else if (e.key === 'Escape') {
+      dispatch(stopEditing())
+    } else if (e.key === 'Tab') {
+      commitEdit()
+      dispatch(moveSelection({ dRow: 0, dCol: e.shiftKey ? -1 : 1 }))
+    }
+  }
+
+  function startColResize(e: React.MouseEvent, col: number) {
     e.preventDefault()
     e.stopPropagation()
-    let startX = e.clientX
-    let startW = getColW(col)
-    
-    function onMove(ev: any) {
-      let diff = ev.clientX - startX
-      let w = startW + diff
-      if (w < 20) w = 20
-      dispatch(setColWidth({ col: col, width: w }))
+    const startX = e.clientX
+    const startW = getColW(col)
+    function onMove(ev: MouseEvent) {
+      const w = Math.max(20, startW + (ev.clientX - startX))
+      dispatch(setColWidth({ col, width: w }))
     }
-    
     function onUp() {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
-    
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
   }
 
-  function startRowResize(e: any, row: number) {
+  function startRowResize(e: React.MouseEvent, row: number) {
     e.preventDefault()
     e.stopPropagation()
-    let startY = e.clientY
-    let startH = getRowH(row)
-    
-    function onMove(ev: any) {
-      let diff = ev.clientY - startY
-      let h = startH + diff
-      if (h < 16) h = 16
-      dispatch(setRowHeight({ row: row, height: h }))
+    const startY = e.clientY
+    const startH = getRowH(row)
+    function onMove(ev: MouseEvent) {
+      const h = Math.max(16, startH + (ev.clientY - startY))
+      dispatch(setRowHeight({ row, height: h }))
     }
-    
     function onUp() {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
-    
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
   }
 
   function buildMenuItems() {
-    let items = []
-    if (menu) {
-      if (menu.row !== undefined) {
-        items.push({ label: 'Вставить строку выше', onClick: () => dispatch(insertRow(menu.row)) })
-        items.push({ label: 'Вставить строку ниже', onClick: () => dispatch(insertRow(menu.row + 1)) })
-        items.push({ label: 'Удалить строку', onClick: () => dispatch(deleteRow(menu.row)) })
-      }
-      if (menu.col !== undefined) {
-        items.push({ label: 'Вставить столбец слева', onClick: () => dispatch(insertCol(menu.col)) })
-        items.push({ label: 'Вставить столбец справа', onClick: () => dispatch(insertCol(menu.col + 1)) })
-        items.push({ label: 'Удалить столбец', onClick: () => dispatch(deleteCol(menu.col)) })
-      }
+    if (!menu) return []
+    const items: { label: string; onClick: () => void }[] = []
+    if (menu.row !== undefined) {
+      items.push({ label: 'Вставить строку выше', onClick: () => dispatch(insertRow(menu.row!)) })
+      items.push({ label: 'Вставить строку ниже', onClick: () => dispatch(insertRow(menu.row! + 1)) })
+      items.push({ label: 'Удалить строку', onClick: () => dispatch(deleteRow(menu.row!)) })
+    }
+    if (menu.col !== undefined) {
+      items.push({ label: 'Вставить столбец слева', onClick: () => dispatch(insertCol(menu.col!)) })
+      items.push({ label: 'Вставить столбец справа', onClick: () => dispatch(insertCol(menu.col! + 1)) })
+      items.push({ label: 'Удалить столбец', onClick: () => dispatch(deleteCol(menu.col!)) })
     }
     return items
   }
 
-  let rowsToRender = []
-  for (let r = startRow; r < endRow; r++) {
-    rowsToRender.push(r)
+  function formatStyle(f?: CellFormat): React.CSSProperties {
+    if (!f) return {}
+    const style: React.CSSProperties = {}
+    if (f.bold) style.fontWeight = 'bold'
+    if (f.italic) style.fontStyle = 'italic'
+    if (f.underline) style.textDecoration = 'underline'
+    if (f.bgColor) style.background = f.bgColor
+    if (f.textColor) style.color = f.textColor
+    if (f.align) style.justifyContent = f.align === 'left' ? 'flex-start' : f.align === 'right' ? 'flex-end' : 'center'
+    return style
   }
 
-  let colsToRender = []
-  for (let c = 0; c < state.cols; c++) {
-    colsToRender.push(c)
-  }
+  const rowsToRender: number[] = []
+  for (let r = startRow; r < endRow; r++) rowsToRender.push(r)
 
   return (
-    <div className="sheet-container" onScroll={e => setScrollTop(e.currentTarget.scrollTop)}>
+    <div
+      className="sheet-container"
+      onScroll={e => setScrollTop(e.currentTarget.scrollTop)}
+    >
       <div className="sheet-grid">
         <div className="sheet-header-row">
-          <div className="header-cell corner" style={{ width: 40, height: 24 }}></div>
-          {colsToRender.map(c => (
+          <div className="header-cell corner" style={{ width: INDEX_WIDTH, height: HEADER_HEIGHT }} />
+          {Array.from({ length: s.cols }, (_, c) => (
             <div
               key={c}
               className="header-cell col-header"
-              style={{ width: getColW(c), height: 24 }}
+              style={{ width: getColW(c), height: HEADER_HEIGHT }}
               onContextMenu={e => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, col: c }) }}
             >
               {colToLetter(c)}
-              <div className="col-resizer" onMouseDown={e => startColResize(e, c)}></div>
+              <div className="col-resizer" onMouseDown={e => startColResize(e, c)} />
             </div>
           ))}
         </div>
 
-        <div style={{ height: topPad }}></div>
+        <div style={{ height: topPad }} />
 
         {rowsToRender.map(r => (
           <div key={r} className="sheet-row" style={{ height: getRowH(r) }}>
             <div
               className="header-cell row-header"
-              style={{ width: 40, height: getRowH(r) }}
+              style={{ width: INDEX_WIDTH, height: getRowH(r) }}
               onContextMenu={e => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, row: r }) }}
             >
               {r + 1}
-              <div className="row-resizer" onMouseDown={e => startRowResize(e, r)}></div>
+              <div className="row-resizer" onMouseDown={e => startRowResize(e, r)} />
             </div>
-            {colsToRender.map(c => {
-              let key = cellKey(r, c)
-              let display = getValue(state.cells, key)
-              
-              let isActive = false
-              if (r === state.selRow && c === state.selCol) isActive = true
-              
-              let isSel = inSelection(r, c)
-              
-              let classNameStr = 'cell'
-              if (isSel) classNameStr += ' selected'
-              if (isActive) classNameStr += ' active'
-
+            {Array.from({ length: s.cols }, (_, c) => {
+              const key = cellKey(r, c)
+              const fmt = s.cellFormats[key]
+              const raw = getValue(s.cells, key)
+              const display = applyNumberFormat(raw, fmt?.numberFormat)
+              const isActive = r === s.selRow && c === s.selCol
+              const isSel = inSelection(r, c)
+              const style = {
+                width: getColW(c),
+                height: getRowH(r),
+                ...formatStyle(fmt),
+              }
               return (
                 <div
                   key={c}
-                  className={classNameStr}
-                  style={{ width: getColW(c), height: getRowH(r) }}
+                  className={'cell' + (isSel ? ' selected' : '') + (isActive ? ' active' : '')}
+                  style={style}
                   onMouseDown={e => handleSelect(r, c, e.shiftKey)}
                   onDoubleClick={handleStartEdit}
                   onContextMenu={e => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, row: r, col: c }) }}
                 >
-                  {isActive && state.editing ? (
+                  {isActive && s.editing ? (
                     <input
                       ref={editorRef}
                       className="cell-editor"
-                      value={state.editValue}
+                      value={s.editValue}
                       onChange={e => dispatch(setEditValue(e.target.value))}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') commitEdit()
-                        if (e.key === 'Escape') dispatch(stopEditing())
-                      }}
+                      onKeyDown={handleEditorKey}
                       onBlur={commitEdit}
                     />
                   ) : (
@@ -229,17 +233,17 @@ export default function Sheet() {
           </div>
         ))}
 
-        <div style={{ height: bottomPad }}></div>
+        <div style={{ height: bottomPad }} />
       </div>
 
-      {menu ? (
+      {menu && (
         <ContextMenu
           x={menu.x}
           y={menu.y}
           items={buildMenuItems()}
           onClose={() => setMenu(null)}
         />
-      ) : null}
+      )}
     </div>
   )
 }

@@ -5,23 +5,22 @@ import reducer, {
   setSaveStatus,
 } from '../store/uiSlice'
 
-describe('Тесты uiSlice', () => {
+describe('uiSlice', () => {
   it('начальное состояние', () => {
-    let state = reducer(undefined, { type: '@@INIT' })
+    const state = reducer(undefined, { type: '@@INIT' })
     expect(state.showCreateModal).toBe(false)
     expect(state.saveStatus).toBe('saved')
   })
 
-  it('открыть и закрыть', () => {
-    let state1 = reducer(undefined, openCreateModal())
-    expect(state1.showCreateModal).toBe(true)
-    
-    let state2 = reducer(state1, closeCreateModal())
-    expect(state2.showCreateModal).toBe(false)
+  it('открыть и закрыть модалку', () => {
+    let state = reducer(undefined, openCreateModal())
+    expect(state.showCreateModal).toBe(true)
+    state = reducer(state, closeCreateModal())
+    expect(state.showCreateModal).toBe(false)
   })
 
-  it('статус сохранения меняется', () => {
-    let state = reducer(undefined, setSaveStatus('saving'))
+  it('смена статуса сохранения', () => {
+    const state = reducer(undefined, setSaveStatus('saving'))
     expect(state.saveStatus).toBe('saving')
   })
 })

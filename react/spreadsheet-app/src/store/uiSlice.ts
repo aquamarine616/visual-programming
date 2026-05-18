@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { saveActiveDoc } from './documentsSlice'
+import { markSaved } from './spreadsheetSlice'
 
 export type SaveStatus = 'saved' | 'saving' | 'error'
 
@@ -36,6 +37,9 @@ const slice = createSlice({
     })
     builder.addCase(saveActiveDoc.rejected, (state) => {
       state.saveStatus = 'error'
+    })
+    builder.addCase(markSaved, (state) => {
+      state.saveStatus = 'saved'
     })
   },
 })

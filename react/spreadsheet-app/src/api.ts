@@ -1,54 +1,74 @@
+import { Doc } from './types'
+import { verifyAccess } from './auth'
+
 const DOCS_KEY = 'docs'
+
+export class ApiError extends Error {
+  status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
 
 function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-function loadAll() {
-  let raw = localStorage.getItem(DOCS_KEY)
+function loadAll(): Doc[] {
+  const raw = localStorage.getItem(DOCS_KEY)
   if (!raw) return []
   return JSON.parse(raw)
 }
 
-function saveAll(docs: any) {
+function saveAll(docs: Doc[]) {
   localStorage.setItem(DOCS_KEY, JSON.stringify(docs))
 }
 
-function newId() {
-  let time = Date.now().toString()
-  let rand = Math.floor(Math.random() * 1000).toString()
-  return 'd_' + time + '_' + rand
+function newId(): string {
+  return 'd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
 }
 
-export async function getDocs() {
-  await delay(100)
-  return loadAll()
-}
-
-export async function getDoc(id: string) {
-  await delay(100)
-  let docs = loadAll()
-  let found = null
-  for (let i = 0; i < docs.length; i++) {
-    if (docs[i].id === id) {
-      found = docs[i]
-    }
+function checkAuth(accessToken: string): string {
+  try {
+    return verifyAccess(accessToken)
+  } catch (e) {
+    throw new ApiError(401, (e as Error).message)
   }
-  if (!found) {
-    throw new Error('Документ не найден')
-  }
-  return found
 }
 
-export async function createDoc(name: string, rows: number, cols: number) {
+export async function getDocs(accessToken: string): Promise<Doc[]> {
   await delay(100)
-  let docs = loadAll()
-  let doc = {
+  const userId = checkAuth(accessToken)
+  return loadAll().filter(d => d.userId === userId)
+}
+
+export async function getDoc(accessToken: string, id: string): Promise<Doc> {
+  await delay(100)
+  const userId = checkAuth(accessToken)
+  const doc = loadAll().find(d => d.id === id)
+  if (!doc) throw new ApiError(404, 'Документ не найден')
+  if (doc.userId !== userId) throw new ApiError(403, 'Нет доступа к документу')
+  return doc
+}
+
+export async function createDoc(
+  accessToken: string,
+  name: string,
+  rows: number,
+  cols: number,
+): Promise<Doc> {
+  await delay(100)
+  const userId = checkAuth(accessToken)
+  const docs = loadAll()
+  const doc: Doc = {
     id: newId(),
-    name: name,
-    rows: rows,
-    cols: cols,
+    userId,
+    name,
+    rows,
+    cols,
     cells: {},
+    cellFormats: {},
     colWidths: {},
     rowHeights: {},
     createdAt: Date.now(),
@@ -59,48 +79,41 @@ export async function createDoc(name: string, rows: number, cols: number) {
   return doc
 }
 
-export async function updateDoc(id: string, patch: any) {
+export async function updateDoc(accessToken: string, id: string, patch: Partial<Doc>): Promise<Doc> {
   await delay(100)
-  let docs = loadAll()
-  let updated = null
-  for (let i = 0; i < docs.length; i++) {
-    if (docs[i].id === id) {
-      docs[i] = { ...docs[i], ...patch, updatedAt: Date.now() }
-      updated = docs[i]
-    }
-  }
+  const userId = checkAuth(accessToken)
+  const docs = loadAll()
+  const idx = docs.findIndex(d => d.id === id)
+  if (idx === -1) throw new ApiError(404, 'Документ не найден')
+  if (docs[idx].userId !== userId) throw new ApiError(403, 'Нет доступа к документу')
+  docs[idx] = { ...docs[idx], ...patch, userId: docs[idx].userId, updatedAt: Date.now() }
   saveAll(docs)
-  return updated
+  return docs[idx]
 }
 
-export async function deleteDoc(id: string) {
+export async function deleteDoc(accessToken: string, id: string): Promise<void> {
   await delay(100)
-  let docs = loadAll()
-  let newDocs = []
-  for (let i = 0; i < docs.length; i++) {
-    if (docs[i].id !== id) {
-      newDocs.push(docs[i])
-    }
-  }
-  saveAll(newDocs)
+  const userId = checkAuth(accessToken)
+  const docs = loadAll()
+  const doc = docs.find(d => d.id === id)
+  if (!doc) throw new ApiError(404, 'Документ не найден')
+  if (doc.userId !== userId) throw new ApiError(403, 'Нет доступа к документу')
+  saveAll(docs.filter(d => d.id !== id))
 }
 
-export async function duplicateDoc(id: string) {
+export async function duplicateDoc(accessToken: string, id: string): Promise<Doc> {
   await delay(100)
-  let docs = loadAll()
-  let orig = null
-  for (let i = 0; i < docs.length; i++) {
-    if (docs[i].id === id) {
-      orig = docs[i]
-    }
-  }
-  if (!orig) throw new Error('Документ не найден')
-  
-  let copy = {
+  const userId = checkAuth(accessToken)
+  const docs = loadAll()
+  const orig = docs.find(d => d.id === id)
+  if (!orig) throw new ApiError(404, 'Документ не найден')
+  if (orig.userId !== userId) throw new ApiError(403, 'Нет доступа к документу')
+  const copy: Doc = {
     ...orig,
     id: newId(),
     name: orig.name + ' (копия)',
     cells: { ...orig.cells },
+    cellFormats: { ...orig.cellFormats },
     colWidths: { ...orig.colWidths },
     rowHeights: { ...orig.rowHeights },
     createdAt: Date.now(),
@@ -109,4 +122,10 @@ export async function duplicateDoc(id: string) {
   docs.push(copy)
   saveAll(docs)
   return copy
+}
+
+export async function countDocs(accessToken: string): Promise<number> {
+  await delay(50)
+  const userId = checkAuth(accessToken)
+  return loadAll().filter(d => d.userId === userId).length
 }

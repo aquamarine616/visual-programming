@@ -1,30 +1,29 @@
-import { SPREADSHEET_MUTATION_TYPES } from './spreadsheetSlice'
+import type { Middleware, AnyAction } from '@reduxjs/toolkit'
+import { SPREADSHEET_MUTATION_TYPES, markSaved } from './spreadsheetSlice'
 import { saveActiveDoc } from './documentsSlice'
+import type { RootState } from './rootReducer'
+import type { AppDispatch } from './index'
 
-let timer: any = null
+const DEBOUNCE_MS = 500
 
-export const autosaveMiddleware = (storeApi: any) => (next: any) => (action: any) => {
-  let result = next(action)
-  
-  let isMutation = false
-  for (let i = 0; i < SPREADSHEET_MUTATION_TYPES.length; i++) {
-    if (SPREADSHEET_MUTATION_TYPES[i] === action.type) {
-      isMutation = true
-    }
-  }
-
-  if (isMutation) {
-    let state = storeApi.getState()
-    if (state.documents.activeId) {
-      if (timer !== null) {
-        clearTimeout(timer)
+export const autosaveMiddleware: Middleware = (storeApi) => {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  return (next) => (action: unknown) => {
+    const result = next(action)
+    const a = action as AnyAction
+    if ((SPREADSHEET_MUTATION_TYPES as string[]).includes(a.type)) {
+      const state = storeApi.getState() as RootState
+      if (state.documents.activeId && state.auth.accessToken) {
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(() => {
+          ;(storeApi.dispatch as AppDispatch)(saveActiveDoc())
+            .unwrap()
+            .then(() => (storeApi.dispatch as AppDispatch)(markSaved()))
+            .catch(() => {  })
+          timer = null
+        }, DEBOUNCE_MS)
       }
-      timer = setTimeout(() => {
-        storeApi.dispatch(saveActiveDoc())
-        timer = null
-      }, 500)
     }
+    return result
   }
-  
-  return result
 }

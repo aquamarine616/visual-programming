@@ -16,6 +16,153 @@ button {
   cursor: pointer;
 }
 
+.link-button {
+  background: none;
+  border: none;
+  color: blue;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.form-error {
+  color: red;
+  font-size: 12px;
+}
+
+.form-ok {
+  color: green;
+  font-size: 12px;
+}
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: #2864c0;
+  color: white;
+}
+
+.app-header a, .app-header a:visited {
+  color: white;
+  text-decoration: none;
+}
+
+.app-logo {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.app-nav {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.app-nav a {
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.app-nav a.active {
+  background: rgba(255,255,255,0.2);
+}
+
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-user button {
+  background: white;
+  color: #2864c0;
+  border: none;
+  border-radius: 4px;
+}
+
+.app-main {
+  flex: 1;
+  overflow: auto;
+}
+
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: #f5f5f5;
+}
+
+.auth-form {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 320px;
+}
+
+.auth-form h2 {
+  margin: 0 0 8px 0;
+  text-align: center;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auth-form input {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.auth-form button {
+  padding: 8px;
+  background: #2864c0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  margin: 0;
+}
+
+.auth-form button:disabled {
+  background: #888;
+}
+
+.auth-link {
+  text-align: center;
+  font-size: 12px;
+}
+
+.breadcrumbs {
+  padding: 6px 12px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ccc;
+  font-size: 12px;
+}
+
+.breadcrumbs a {
+  color: #2864c0;
+  text-decoration: none;
+}
+
+.crumb-sep {
+  color: #888;
+  margin: 0 4px;
+}
+
 .dashboard {
   padding: 16px;
 }
@@ -37,6 +184,7 @@ button {
   border: 1px solid #ccc;
   border-radius: 6px;
   padding: 12px;
+  background: white;
 }
 
 .doc-name {
@@ -117,7 +265,7 @@ button {
 .editor {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
 }
 
 .toolbar {
@@ -127,6 +275,57 @@ button {
   border-bottom: 1px solid #ccc;
   gap: 4px;
   flex-wrap: wrap;
+  background: #fafafa;
+}
+
+.format-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  border-bottom: 1px solid #ccc;
+  gap: 4px;
+  background: #fafafa;
+}
+
+.format-toolbar button {
+  min-width: 30px;
+  padding: 4px 8px;
+  margin: 0;
+  background: white;
+  border: 1px solid #ccc;
+}
+
+.format-toolbar button.fmt-active {
+  background: #d8e8ff;
+  border-color: #2864c0;
+}
+
+.fmt-sep {
+  display: inline-block;
+  width: 1px;
+  background: #ccc;
+  height: 20px;
+  margin: 0 4px;
+}
+
+.color-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.color-picker input[type=color] {
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+}
+
+.format-toolbar select {
+  padding: 3px 6px;
 }
 
 .doc-name-input {
@@ -148,6 +347,7 @@ button {
   align-items: center;
   border-bottom: 1px solid #ccc;
   padding: 4px;
+  background: white;
 }
 
 .cell-ref {
@@ -169,6 +369,7 @@ button {
   flex: 1;
   overflow: auto;
   position: relative;
+  min-height: 0;
 }
 
 .sheet-grid {
@@ -263,7 +464,6 @@ button {
 .cell.active {
   outline: 2px solid #2864c0;
   outline-offset: -2px;
-  background: white;
 }
 
 .cell-editor {
@@ -274,6 +474,7 @@ button {
   font-size: inherit;
   font-family: inherit;
   padding: 0;
+  background: white;
 }
 
 .context-overlay {
@@ -302,4 +503,59 @@ button {
 
 .loading {
   padding: 20px;
+}
+
+.not-found {
+  padding: 40px;
+  text-align: center;
+}
+
+.profile-page {
+  padding: 24px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.profile-section {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-form {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-form h3 {
+  margin: 0 0 8px 0;
+}
+
+.profile-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-form input {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.profile-form button {
+  align-self: flex-start;
+  padding: 6px 14px;
+  margin: 0;
 }

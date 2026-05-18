@@ -1,46 +1,37 @@
 import { useAppDispatch, useAppSelector } from '../store/hooks'
-import { setCell, setEditValue, stopEditing } from '../store/spreadsheetSlice'
+import { setCell, setEditValue, startEditing, stopEditing } from '../store/spreadsheetSlice'
 import { cellKey } from '../utils/cellRef'
 
 export default function FormulaBar() {
-  let dispatch = useAppDispatch()
-  
-  let row = useAppSelector(s => s.spreadsheet.selRow)
-  let col = useAppSelector(s => s.spreadsheet.selCol)
-  
-  let editing = useAppSelector(s => s.spreadsheet.editing)
-  let editValue = useAppSelector(s => s.spreadsheet.editValue)
-  
-  let cells = useAppSelector(s => s.spreadsheet.cells)
-  let cellValue = cells[cellKey(row, col)]
-  if (!cellValue) {
-    cellValue = ''
-  }
+  const dispatch = useAppDispatch()
+  const sel = useAppSelector(s => ({ row: s.spreadsheet.selRow, col: s.spreadsheet.selCol }))
+  const editing = useAppSelector(s => s.spreadsheet.editing)
+  const editValue = useAppSelector(s => s.spreadsheet.editValue)
+  const cellValue = useAppSelector(s => s.spreadsheet.cells[cellKey(sel.row, sel.col)] || '')
 
-  let value = ''
-  if (editing) {
-    value = editValue
-  } else {
-    value = cellValue
+  const value = editing ? editValue : cellValue
+
+  function handleFocus() {
+    if (!editing) dispatch(startEditing(cellValue))
   }
 
   function commit() {
-    if (editing) {
-      dispatch(setCell({ row: row, col: col, value: editValue }))
-      dispatch(stopEditing())
-    }
+    if (!editing) return
+    dispatch(setCell({ row: sel.row, col: sel.col, value: editValue }))
+    dispatch(stopEditing())
   }
 
   return (
     <div className="formula-bar">
-      <div className="cell-ref">{cellKey(row, col)}</div>
+      <div className="cell-ref">{cellKey(sel.row, sel.col)}</div>
       <input
         value={value}
+        onFocus={handleFocus}
         onChange={e => dispatch(setEditValue(e.target.value))}
         onKeyDown={e => {
           if (e.key === 'Enter') {
             commit()
-            e.target.blur()
+            e.currentTarget.blur()
           }
         }}
         onBlur={commit}

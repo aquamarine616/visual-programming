@@ -1,58 +1,82 @@
 import { Cells } from '../types'
 import { parseRef, cellKey } from './cellRef'
 
-function getCellNum(cells: Cells, ref: string): number {
-  let val = getValue(cells, ref)
-  let num = parseFloat(val)
-  if (isNaN(num)) return 0
-  return num
+function getNumber(cells: Cells, ref: string, seen: Set<string>): number {
+  const v = getValue(cells, ref, seen)
+  const n = Number(v)
+  return isNaN(n) ? 0 : n
 }
 
-export function getValue(cells: Cells, ref: string): string {
-  let data = cells[ref]
-  if (!data) return ''
-  
-  if (data[0] !== '=') {
-    return data
+function expandRange(from: string, to: string): string[] {
+  const a = parseRef(from)
+  const b = parseRef(to)
+  if (!a || !b) return []
+  const r1 = Math.min(a.row, b.row)
+  const r2 = Math.max(a.row, b.row)
+  const c1 = Math.min(a.col, b.col)
+  const c2 = Math.max(a.col, b.col)
+  const res: string[] = []
+  for (let r = r1; r <= r2; r++) {
+    for (let c = c1; c <= c2; c++) {
+      res.push(cellKey(r, c))
+    }
   }
+  return res
+}
 
-  let expression = data.slice(1).toUpperCase()
+function evalExpr(cells: Cells, expr: string, seen: Set<string>): number | string {
+  let s = expr.trim()
 
-  if (expression.includes('SUM(') || expression.includes('AVERAGE(')) {
-    let parts = expression.split('(')
-    let funcName = parts[0]
-    let range = parts[1].replace(')', '')
-    let [start, end] = range.split(':')
-    
-    let a = parseRef(start)
-    let b = parseRef(end)
-    
-    if (a && b) {
+  const fn = s.match(/^([A-Z]+)\(([^)]*)\)$/)
+  if (fn) {
+    const name = fn[1]
+    const args = fn[2]
+    const range = args.match(/^([A-Z]+\d+):([A-Z]+\d+)$/)
+    if (!range) return '#ERR'
+    const refs = expandRange(range[1], range[2])
+    for (const r of refs) {
+      if (getValue(cells, r, seen) === '#CYCLE') return '#CYCLE'
+    }
+    if (name === 'SUM') {
       let sum = 0
-      let count = 0
-      for (let r = Math.min(a.row, b.row); r <= Math.max(a.row, b.row); r++) {
-        for (let c = Math.min(a.col, b.col); c <= Math.max(a.col, b.col); c++) {
-          sum += getCellNum(cells, cellKey(r, c))
-          count++
-        }
-      }
-      if (funcName === 'SUM') return sum.toString()
-      if (funcName === 'AVERAGE') return (sum / count).toString()
+      for (const r of refs) sum += getNumber(cells, r, seen)
+      return sum
     }
+    if (name === 'AVERAGE') {
+      if (refs.length === 0) return 0
+      let sum = 0
+      for (const r of refs) sum += getNumber(cells, r, seen)
+      return sum / refs.length
+    }
+    return '#ERR'
   }
 
-  let coords = expression.match(/[A-Z]+\d+/g)
-  if (coords) {
-    for (let i = 0; i < coords.length; i++) {
-      let c = coords[i]
-      let v = getCellNum(cells, c)
-      expression = expression.replace(c, v.toString())
-    }
-  }
+  let cycle = false
+  s = s.replace(/[A-Z]+\d+/g, (ref) => {
+    const v = getValue(cells, ref, seen)
+    if (v === '#CYCLE') cycle = true
+    const n = Number(v)
+    return String(isNaN(n) ? 0 : n)
+  })
+  if (cycle) return '#CYCLE'
+
+  if (!/^[\d+\-*/.() ]+$/.test(s)) return '#ERR'
 
   try {
-    return eval(expression).toString()
-  } catch (e) {
-    return '#ОШИБКА!'
+    const r = Function('return (' + s + ')')()
+    if (typeof r === 'number' && !isNaN(r)) return r
+    return '#ERR'
+  } catch {
+    return '#ERR'
   }
+}
+
+export function getValue(cells: Cells, ref: string, seen: Set<string> = new Set()): string {
+  const raw = cells[ref]
+  if (raw === undefined || raw === '') return ''
+  if (!raw.startsWith('=')) return raw
+  if (seen.has(ref)) return '#CYCLE'
+  const next = new Set(seen)
+  next.add(ref)
+  return String(evalExpr(cells, raw.slice(1), next))
 }
