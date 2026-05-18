@@ -1,20 +1,37 @@
 name: CI
-
+ 
 on:
   push:
-    branches: [lab1, lab3, lab4, lab5, lab6]
+    branches: [main, master, spreedsheet-app, spreadsheet-app]
+  pull_request:
   workflow_dispatch:
-
+ 
+defaults:
+  run:
+    working-directory: react/spreadsheet-app
+ 
 jobs:
   test:
     runs-on: ubuntu-latest
+ 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+ 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-
-      - run: npm ci
-      - run: npm test
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: react/spreadsheet-app/package-lock.json
+ 
+      - name: Install dependencies
+        run: npm ci
+ 
+      - name: Typecheck
+        run: npx tsc -b --noEmit
+ 
+      - name: Run tests
+        run: npm test -- --run
+ 
+      - name: Build
+        run: npm run build
